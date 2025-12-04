@@ -1,3 +1,4 @@
+## Dispersion function
 The function 
 
 Get_dispersion $(U, z, k, \Upsilon) \rightarrow c(k)$
