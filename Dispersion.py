@@ -33,25 +33,25 @@ def _f0(k, c, dz, Um, Uzzm):
     return out
 
 @njit(cache=True)
-def _Disp(k, c, dz, Um, Uzzm, U_last, Uz0, Bo):
+def _Disp(k, c, dz, Um, Uzzm, U_last, Uz0, Yps):
     n = c.size
     D = np.empty(n, np.float64)
     k2 = k * k
     f = _f0(k, c, dz, Um, Uzzm)
     for i in range(n):
         cm = c[i] - U_last
-        D[i] = cm * cm - (1.0 + Bo * k2 - cm * Uz0) * f[i].real
+        D[i] = cm * cm - (1.0 + Yps/9.81 * k2 - cm * Uz0) * f[i].real
     return D
 
 @njit(cache=True)
-def _Disp_scalar(k, c, dz, Um, Uzzm, U_last, Uz0, Bo):
+def _Disp_scalar(k, c, dz, Um, Uzzm, U_last, Uz0, Yps):
     k2 = k * k
     f = _f0_single(k, c, dz, Um, Uzzm)
     cm = c - U_last
-    return cm * cm - (1.0 + Bo * k2 - cm * Uz0) * f.real
+    return cm * cm - (1.0 + Yps/9.81 * k2 - cm * Uz0) * f.real
 
 @njit(cache=True)
-def _refine_and_classify_root(k, cl0, cr0, Dl0, Dr0, dz, Um, Uzzm, U_last, Uz0, Bo):
+def _refine_and_classify_root(k, cl0, cr0, Dl0, Dr0, dz, Um, Uzzm, U_last, Uz0, Yps):
     cl = cl0
     cr = cr0
     Dl = Dl0
@@ -64,7 +64,7 @@ def _refine_and_classify_root(k, cl0, cr0, Dl0, Dr0, dz, Um, Uzzm, U_last, Uz0, 
         best_D_abs = abs(Dr)
     for _ in range(ITERATIONS):
         cm = 0.5 * (cl + cr)
-        Dm = _Disp_scalar(k, cm, dz, Um, Uzzm, U_last, Uz0, Bo)
+        Dm = _Disp_scalar(k, cm, dz, Um, Uzzm, U_last, Uz0, Yps)
         Dm_abs = abs(Dm)
         if Dm_abs < best_D_abs:
             best_D_abs = Dm_abs
@@ -82,12 +82,12 @@ def _refine_and_classify_root(k, cl0, cr0, Dl0, Dr0, dz, Um, Uzzm, U_last, Uz0, 
     return best_c, is_true_root
 
 @njit(cache=True)
-def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Bo):
+def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Yps):
     c_start = U_last + 1e-3
     c_max = U_last + 5.0
     #c_start = -1e-2
     #c_max = 1e-2
-    Dc = _Disp_scalar(k, c_start, dz, Um, Uzzm, U_last, Uz0, Bo)
+    Dc = _Disp_scalar(k, c_start, dz, Um, Uzzm, U_last, Uz0, Yps)
 
     best_c = c_start
     best_D_abs = abs(Dc)
@@ -101,7 +101,7 @@ def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Bo):
             break
 
         c_next = c + step
-        D_next = _Disp_scalar(k, c_next, dz, Um, Uzzm, U_last, Uz0, Bo)
+        D_next = _Disp_scalar(k, c_next, dz, Um, Uzzm, U_last, Uz0, Yps)
 
         D_next_abs = abs(D_next)
         if D_next_abs < best_D_abs:
@@ -109,9 +109,7 @@ def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Bo):
             best_c = c_next
 
         if Dc * D_next <= 0.0:
-            root_c, is_root = _refine_and_classify_root(
-                k, c, c_next, Dc, D_next, dz, Um, Uzzm, U_last, Uz0, Bo
-            )
+            root_c, is_root = _refine_and_classify_root(k, c, c_next, Dc, D_next, dz, Um, Uzzm, U_last, Uz0, Yps)
             if is_root:
                 return root_c
             else:
@@ -127,14 +125,14 @@ def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Bo):
     return best_c
 
 @njit(parallel=True)
-def _all_roots(k_vec, dz, Um, Uzzm, U_last, Uz0, Bo):
+def _all_roots(k_vec, dz, Um, Uzzm, U_last, Uz0, Yps):
     n = k_vec.size
     out = np.empty(n, np.float64)
     for i in prange(n):
-        out[i] = _c_approx(k_vec[i], dz, Um, Uzzm, U_last, Uz0, Bo)
+        out[i] = _c_approx(k_vec[i], dz, Um, Uzzm, U_last, Uz0, Yps)
     return out
 
-def Get_dispersion(U_vec, z_vec, k_vec, Bo=0.0):
+def Get_dispersion(U_vec, z_vec, k_vec, Yps=0.0):
     z = np.asarray(z_vec, np.float64)
     U = np.asarray(U_vec, np.float64)
     if z[0] > z[-1]:
@@ -148,9 +146,9 @@ def Get_dispersion(U_vec, z_vec, k_vec, Bo=0.0):
     Uzz = cs(z, 2)
     Uzzm = 0.5 * (Uzz[:-1] + Uzz[1:])
     k_vec = np.asarray(k_vec, np.float64)
-    return _all_roots(k_vec, dz, Um, Uzzm, U[-1], Uz0, float(Bo))
+    return _all_roots(k_vec, dz, Um, Uzzm, U[-1], Uz0, float(Yps))
 
-def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Bo = 0, interpolate = False):
+def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
 
     ####################################################################################################################
     ### Define variables
@@ -241,7 +239,7 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Bo = 0, interpolate = False):
                     f_end[j] = np.nan + 1j * np.nan
 
             cintr = c - U[-1]
-            D = cintr ** 2 - (1.0 + Bo * k **2 - cintr * Uz0) * f_end
+            D = cintr ** 2 - (1.0 + Yps/9.81 * k **2 - cintr * Uz0) * f_end
             return np.real(D)
 
         except Exception as e_outer:
@@ -253,7 +251,7 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Bo = 0, interpolate = False):
             s = np.sqrt(k ** 2 + Uzzm[i] / (Um[i] - ce))
             f = (1 / s) * np.tanh(s * dz[i] + np.arctanh(s * f))
 
-        D = (c - U[-1]) ** 2 - (1.0 + Bo * k ** 2 - (c - U[-1]) * Uz0) * f
+        D = (c - U[-1]) ** 2 - (1.0 + Yps/9.81 * k ** 2 - (c - U[-1]) * Uz0) * f
         return np.real(D)
 
     def zero_crossing_pairs(x):
