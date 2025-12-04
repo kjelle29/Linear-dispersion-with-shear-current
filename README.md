@@ -29,18 +29,18 @@ The equation above is the Rayleigh equation cast in a Riccati equation for $f(z)
 
 $$\frac{d}{dz} f(z) = 1 - s^2 f(z)^2.$$
 
-Without the interaction picture, we can write the evolution of the state ${\chi(z) = (G_-(z), G_-`(z))^T}$ as 
+Without the interaction picture, we can write the evolution of the state ${\vec{\chi} (z) = (G_-(z), G_-`(z))^T}$ as 
 
-$$\chi`(z) = \begin{bmatrix}
+$$\vec{\chi} `(z) = \begin{bmatrix}
         0 & 1\\\ s^2 & 0
-    \end{bmatrix} \chi(z) .$$
+    \end{bmatrix} \vec{\chi} (z) .$$
 
 Next, we discretize the depth $\Delta = z_{i+i} - z_{i}$ and $s(z_i) = s_i$. Taking the first order Magnus term, so the ordinary exponential, we can write
 
-$$\chi_{i+1} = \begin{bmatrix}
+$$\vec{\chi} _{i+1} = \begin{bmatrix}
         \cosh (s_i\Delta) & \frac{\sinh (s_i\Delta)}{s_i}\\
         s_i \sinh (s_i\Delta) & \cosh (s_i\Delta)
-    \end{bmatrix} \chi_i .$$
+    \end{bmatrix} \vec{\chi} _i .$$
 
  We insert this into the equation for $f(z)$, and simplify it. The equation that solves the Rayleigh/Ricatti equation numerically is
 
