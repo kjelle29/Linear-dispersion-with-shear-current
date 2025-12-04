@@ -1,1 +1,1 @@
-Test $\mathcal{X}$
+Test $\mathcal{\Chi}$
