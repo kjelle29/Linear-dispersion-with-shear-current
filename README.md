@@ -1,1 +1,1 @@
-Test $\mathcal{\Chi}$
+Test $\mathcal{\chi}$
