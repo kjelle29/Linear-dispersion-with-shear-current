@@ -34,7 +34,7 @@ from Dispersion import Get_dispersion
 
 g = 9.81
 h = 1
-Bo = 0.073/9810
+Yps = 0.073/1000
 c0 = np.sqrt(g*h)
 
 z = np.linspace(-1, 0, 1000)
@@ -51,9 +51,9 @@ kv1 = np.loadtxt("DIM/kv1.dat")
 kv2 = np.loadtxt("DIM/kv2.dat")
 kv3 = np.loadtxt("DIM/kv3.dat")
 
-w01 = np.sqrt((1 + Bo * kv1**2) * kv1 * np.tanh(kv1))
-w02 = np.sqrt((1 + Bo * kv2**2) * kv2 * np.tanh(kv2))
-w03 = np.sqrt((1 + Bo * kv3**2) * kv3 * np.tanh(kv3))
+w01 = np.sqrt((1 + Yps/9.81 * kv1**2) * kv1 * np.tanh(kv1))
+w02 = np.sqrt((1 + Yps/9.81 * kv2**2) * kv2 * np.tanh(kv2))
+w03 = np.sqrt((1 + Yps/9.81 * kv3**2) * kv3 * np.tanh(kv3))
 
 c_DIM1  = np.loadtxt("DIM/c_dim1.dat") / c0 + U1[-1]
 c_DIM2  = np.loadtxt("DIM/c_dim2.dat") / c0 + U2[-1]
@@ -63,9 +63,9 @@ c_KC1 = np.loadtxt("DIM/c_kc1.dat") / c0 + U1[-1]
 c_KC2 = np.loadtxt("DIM/c_kc2.dat") / c0 + U2[-1]
 c_KC3 = np.loadtxt("DIM/c_kc3.dat") / c0 + U3[-1]
 
-c1_Heinrich = Get_dispersion(U1, z, kv1, Bo=Bo)
-c2_Heinrich = Get_dispersion(U2, z, kv2, Bo=Bo)
-c3_Heinrich = Get_dispersion(U3, z, kv3, Bo=Bo)
+c1_Heinrich = Get_dispersion(U1, z, kv1, Yps=Yps)
+c2_Heinrich = Get_dispersion(U2, z, kv2, Yps=Yps)
+c3_Heinrich = Get_dispersion(U3, z, kv3, Yps=Yps)
 
 #######################################################################################################################
 
