@@ -1,6 +1,10 @@
 ## A closed linear dispersion relation for surface waves on a shear current 
 
-We have derived the dispersion relation 
+<p align="center">
+        <img width="520" height="290" alt="image" src="https://github.com/user-attachments/assets/ce495baa-f0ba-4473-ab1f-42136ed3b992" />
+</p>
+
+For the physical geometry in the figure above, we have derived the dispersion relation 
 
 $$\Omega_0^2 = \big[(g+\Upsilon k^2) k^2 - \Omega_0 |\partial_z U(0)| \cos \gamma \big] \frac{G_-(0)}{\partial_z G_-(0)} $$
 
