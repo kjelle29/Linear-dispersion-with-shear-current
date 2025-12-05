@@ -2,36 +2,36 @@
 
 We have derived the dispersion relation 
 
-$$\Omega_0^2 = \big[(g+\Upsilon k^2) k^2 - \Omega_0 |U`_0| cos \gamma \big] \frac{G_-(0)}{{G'}_-(0)} $$
+$$\Omega_0^2 = \big[(g+\Upsilon k^2) k^2 - \Omega_0 |\partial_z U(0)| \cos \gamma \big] \frac{G_-(0)}{\partial_z G_-(0)} $$
 
 for an arbitrary shear current $U(z)$. The Green's function and it's derivative is given by
 
 $$G_-(z) = \cosh k(z+h) Z_1(z) + \frac{\sinh k (z+h)}{k} Z_2(z), $$
 
-$$G_-`(z) = k \sinh k(z+h) Z_1(z) + \cosh k(z+h) Z_2(z), $$
+$$\partial_z G_-(z) = k \sinh k(z+h) Z_1(z) + \cosh k(z+h) Z_2(z), $$
 
 where $Z_1(z)$ and $Z_2(z)$ are the vector elements of
 
-$$\vec{Z} = \mathcal{P} \exp \bigg( \int_{-h}^0 q(\zeta) C(\zeta+h) d\zeta \bigg) \begin{pmatrix} 0\\\ 1\end{pmatrix} . $$
+$$\vec{Z}(z) = \mathcal{P} \exp \bigg( \int_{-h}^z q(\zeta) C(\zeta+h) d\zeta \bigg) \begin{pmatrix} 0\\\ 1\end{pmatrix}, \quad C(x) = \frac{1}{2}\begin{bmatrix} - k \sinh 2kx & 1 - \cosh 2kx \\\ k^2 (1 + \cosh 2kx) & k \sinh 2kx \end{bmatrix} . $$
 
 ### Dispersion function
 The function Get_dispersion in  'Dispersion.py'  takes the shear current $U$, nondimensionalized by $\sqrt{gh}$, the vertical grid $z/h$, and wavenumber(s) $kh$. It is assumed that $h=1$. 
 
-To compare it to DIM, it solves the dispersion relation
+To compare it to DIM, it solves the dispersion relation (assuming $\vec{U} \parallel \vec{k}$)
 
-$$\tilde{c}^2 = \big(1 + \Upsilon k^2/g  - \tilde{c}|U`_0| \big) f(0),$$
+$$\tilde{c}^2 = \big(1 + \Upsilon k^2/g  - \tilde{c}|\partial_z U(0)| \big) f(0),$$
 
 where $\tilde{c}=\Omega_0/k$ is the intrinsic phase velocity and
 
 $$\frac{d}{dz} f(z) = 1 - k^2\big[1 + q(z)\big] f(z),\qquad f(-h) =0.$$
 
-The equation above is the Rayleigh equation cast in a Riccati equation for $f(z) = G_-(z) / G_-`(z)$. Defining $s^2 = k^2(1+q)$, the derivative can be expressed as
+The equation above is the Rayleigh equation cast in a Riccati equation for $f(z) = G_-(z) / \partial_z G_-(z)$. Defining $s^2 = k^2(1+q)$, the derivative can be expressed as
 
 $$\frac{d}{dz} f(z) = 1 - s^2 f(z)^2.$$
 
-Without the interaction picture, we can write the evolution of the state ${\vec{\chi} (z) = (G_-(z), G_-`(z))^T}$ as 
+Without the interaction picture, we can write the evolution of the state ${\vec{\chi} (z) = (G_-(z), {\ } \partial_z G_-(z))^T}$ as 
 
-$$\vec{\chi} `(z) = \begin{bmatrix}
+$$\partial_z \vec{\chi}(z) = \begin{bmatrix}
         0 & 1\\\ s^2 & 0
     \end{bmatrix} \vec{\chi} (z) .$$
 
