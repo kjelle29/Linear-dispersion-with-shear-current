@@ -2,13 +2,13 @@ import numpy as np
 from numba import njit, prange
 from scipy.interpolate import CubicSpline
 
+GAMMA = 1e-20
+STEP = 1e-4
+INCREASE_RATE = 1.05
+
 ITERATIONS = 50
 C_TOL = 1e-20
 D_TOL = 1e-20
-GAMMA = 1e-20
-
-STEP = 1e-4
-INCREASE_RATE = 1.05
 ROOT_F_TOL = 1e-10
 
 @njit(cache=True)
@@ -281,3 +281,4 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
         return np.mean(cs)
 
     return np.array([c_approximation(ki) for ki in k_vec])
+
