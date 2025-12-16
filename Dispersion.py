@@ -141,6 +141,7 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
     if z[0] > z[-1]:
         z, U = z[::-1], U[::-1]
 
+    from scipy.interpolate import CubicSpline
     cubic_spline = CubicSpline(z, U, bc_type="natural", extrapolate=True)
     Uz0 = cubic_spline(0.0, 1)
 
@@ -261,5 +262,6 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
         return np.mean(cs)
 
     return np.array([c_approximation(ki) for ki in k_vec])
+
 
 
