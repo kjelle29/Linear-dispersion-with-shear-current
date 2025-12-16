@@ -1,162 +1,112 @@
 import numpy as np
-from numba import njit, prange
-from scipy.interpolate import CubicSpline
+import matplotlib.pyplot as plt
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Times"],                              # Times look
+    "text.latex.preamble": r"\usepackage{newtxtext}\usepackage{newtxmath}",
+    "font.size": 8,                                       # base size
+    "axes.labelsize": 8,
+    "axes.titlesize": 9,
+    "xtick.labelsize": 7,
+    "ytick.labelsize": 7,
+    "legend.fontsize": 7,
 
-GAMMA = 1e-10
-STEP = 1e-3
-INCREASE_RATE = 1.1
+    "figure.figsize": [6.9, 4.1],                         # width fits JFM double column
+    "figure.dpi": 300,
+    "savefig.dpi": 600,
 
-ITERATIONS = 50
-C_TOL = 1e-20
-D_TOL = 1e-20
-ROOT_F_TOL = 1e-10
+    # Journal-ish axes/ticks
+    "axes.linewidth": 0.7,
+    "lines.linewidth": 0.8,
+    "xtick.direction": "in",
+    "ytick.direction": "in",
+    "xtick.major.size": 3,
+    "ytick.major.size": 3,
+    "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6,
+    "axes.titlepad": 2.0,
+    "axes.labelpad": 1.5,
+    "axes.unicode_minus": False,
+})
+from Get_dispersion import Get_dispersion
 
-@njit(cache=True)
-def _f0_single(k, c, dz, Um, Uzzm):
-    k2 = k * k
-    ce = c - GAMMA * 1j
-    f = 0.0 + 0.0j
-    for i in range(dz.size):
-        s = np.sqrt(k2 + Uzzm[i] / (Um[i] - ce))
-        sdz = s * dz[i]
-        t = np.tanh(sdz)
-        f = (f + t / s) / (1.0 + t * s * f)
-    return f
+g = 9.81
+h = 1
+Yps = 0.073/1000
+c0 = np.sqrt(g*h)
 
-@njit(cache=True)
-def _f0(k, c, dz, Um, Uzzm):
-    out = np.zeros_like(c, np.complex128)
-    for j in range(c.size):
-        out[j] = _f0_single(k, c[j], dz, Um, Uzzm)
-    return out
+z = np.linspace(-1, 0, 100000)
 
-@njit(cache=True)
-def _Disp(k, c, dz, Um, Uzzm, U_last, Uz0, Yps):
-    D = np.empty_like(c, np.float64)
-    k2 = k * k
-    f = _f0(k, c, dz, Um, Uzzm)
-    for i in range(c.size):
-        cm = c[i] - U_last
-        D[i] = cm * cm - (9.81 + Yps * k2 - cm * Uz0) * f[i].real
-    return D
+P1 = np.array([0.9884, 5.367, 10.48, 8.784, 2.684, 0, 0])
+P2 = np.array([1.098, 4.275, 3.041, -0.0086, 0.1212, 0, 0])
+P3 = np.array([1.509, 2.999, 3.811, 2.172, 0.4921, 0, 0])
 
-@njit(cache=True)
-def _Disp_scalar(k, c, dz, Um, Uzzm, U_last, Uz0, Yps):
-    k2 = k * k
-    f = _f0_single(k, c, dz, Um, Uzzm)
-    cm = c - U_last
-    return cm * cm - (9.81 + Yps * k2 - cm * Uz0) * f.real
+U1 = np.polynomial.polynomial.polyval(z, P1)
+U2 = np.polynomial.polynomial.polyval(z, P2)
+U3 = np.polynomial.polynomial.polyval(z, P3)
 
-@njit(cache=True)
-def _refine_and_classify_root(k, cl, cr, Dl, Dr, dz, Um, Uzzm, U_last, Uz0, Yps):
-    best_c = cl
-    best_D_abs = abs(Dl)
+kv1 = np.loadtxt("DIM/kv1.dat")
+kv2 = np.loadtxt("DIM/kv2.dat")
+kv3 = np.loadtxt("DIM/kv3.dat")
 
-    if abs(Dr) < best_D_abs:
-        best_c = cr
-        best_D_abs = abs(Dr)
-    for _ in range(ITERATIONS):
-        cm = 0.5 * (cl + cr)
-        Dm = _Disp_scalar(k, cm, dz, Um, Uzzm, U_last, Uz0, Yps)
-        Dm_abs = abs(Dm)
-        if Dm_abs < best_D_abs:
-            best_D_abs = Dm_abs
-            best_c = cm
-        if Dl * Dm <= 0.0:
-            cr = cm
-        else:
-            cl = cm
-            Dl = Dm
-        if (cr - cl) < C_TOL or best_D_abs < D_TOL:
-            break
+w01 = np.sqrt((9.81 + Yps * kv1**2) * kv1 * np.tanh(kv1))
+w02 = np.sqrt((9.81 + Yps * kv2**2) * kv2 * np.tanh(kv2))
+w03 = np.sqrt((9.81 + Yps * kv3**2) * kv3 * np.tanh(kv3))
 
-    is_true_root = best_D_abs < ROOT_F_TOL
-    return best_c, is_true_root
+c_DIM1  = np.loadtxt("DIM/c_dim1.dat") / c0
+c_DIM2  = np.loadtxt("DIM/c_dim2.dat") / c0
+c_DIM3  = np.loadtxt("DIM/c_dim3.dat") / c0
 
-@njit(cache=True)
-def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Yps, bracket):
-    c_min = bracket[0]
-    c_start = bracket[1]
+c_KC1 = np.loadtxt("DIM/c_kc1.dat") / c0
+c_KC2 = np.loadtxt("DIM/c_kc2.dat") / c0
+c_KC3 = np.loadtxt("DIM/c_kc3.dat") / c0
 
-    Dc = _Disp_scalar(k, c_start, dz, Um, Uzzm, U_last, Uz0, Yps)
+c1_ = Get_dispersion(U1, z, kv1, Yps=Yps) / c0
+print('1')
+c2_ = Get_dispersion(U2, z, kv2,Yps=Yps) / c0
+print('2')
+c3_ = Get_dispersion(U3, z, kv3, Yps=Yps) / c0
+print('3')
 
-    best_c = c_start
-    best_D_abs = abs(Dc)
+#######################################################################################################################
 
-    step = -STEP
-    c = c_start
+fig, ax = plt.subplots(3, 3, sharex='col', sharey='col', figsize=(6.9, 4.5))
 
-    while c > c_min:
-        c_next = c + step
-        if c_next < c_min:
-            c_next = c_min
+ax[0, 0].plot(U1 / c0, z, '-k', lw=1)
+ax[0, 1].plot(kv1, c_DIM1 * kv1 / w01, c='darkgray', lw=1.5, label='DIM', alpha=0.75)
+ax[0, 1].plot(kv1, c_KC1 * kv1 / w01, ls='--', c='royalblue', lw=1, label=r'K\&C$_\textrm{1st}$')
+ax[0, 1].plot(kv1, c1_ * kv1 / w01, ':', c='tomato', lw=1.5, label='Magnus 1st')
+ax[0, 2].loglog(kv1, np.abs((c_KC1-c_DIM1)/c_DIM1), ls='--', c='royalblue', lw=1, label=r'K\&C$_\textrm{1st}$')
+ax[0, 2].loglog(kv1, np.abs((c1_-c_DIM1)/c_DIM1), c='tomato', lw=1, label='Magnus 1st')
+ax[0, 1].legend(frameon=False, loc='upper left'), ax[0, 2].legend(frameon=False, loc='center left')
 
-        D_next = _Disp_scalar(k, c_next, dz, Um, Uzzm, U_last, Uz0, Yps)
+ax[1, 0].plot(U2 / c0, z, '-k', lw=1)
+ax[1, 1].plot(kv2, c_DIM2 * kv2 / w02, c='darkgray', lw=1.5, label='DIM', alpha=0.75)
+ax[1, 1].plot(kv2, c_KC2 * kv2 / w02, ls='--', c='royalblue', lw=1, label=r'K\&C$_\textrm{1st}$')
+ax[1, 1].plot(kv2, c2_ * kv2 / w02, ':', c='tomato', lw=1.5, label='Magnus 1st')
+ax[1, 2].loglog(kv2, np.abs((c_KC2-c_DIM2)/c_DIM2), ls='--', c='royalblue', lw=1, label=r'K\&C$_\textrm{1st}$')
+ax[1, 2].loglog(kv2, np.abs((c2_-c_DIM2)/c_DIM2), c='tomato', lw=1, label='Magnus 1st')
+ax[1, 1].legend(frameon=False, loc='upper left'), ax[1, 2].legend(frameon=False, loc='center left')
 
-        D_next_abs = abs(D_next)
-        if D_next_abs < best_D_abs:
-            best_D_abs = D_next_abs
-            best_c = c_next
+ax[2, 0].plot(U3 / c0, z, '-k', lw=1)
+ax[2, 1].plot(kv3, c_DIM3 * kv3 / w03, c='darkgray', lw=1.5, label='DIM', alpha=0.75)
+ax[2, 1].plot(kv3, c_KC3 * kv3 / w03, ls='--', c='royalblue', lw=1, label=r'K\&C$_\textrm{1st}$')
+ax[2, 1].semilogx(kv3, c3_ * kv3 / w03, ':', c='tomato', lw=1.5, label='Magnus 1st')
+ax[2, 2].loglog(kv3, np.abs((c_KC3-c_DIM3)/c_DIM3), ls='--', c='royalblue', lw=1, label=r'K\&C$_\textrm{1st}$')
+ax[2, 2].loglog(kv3, np.abs((c3_-c_DIM3)/c_DIM3), c='tomato', lw=1, label='Magnus 1st')
+ax[2, 1].legend(frameon=False, loc='upper left'), ax[2, 2].legend(frameon=False, loc='center left')
 
-        if Dc * D_next <= 0.0 and c != c_next:
-            if c_next < c:
-                cl, cr = c_next, c
-                Dl, Dr = D_next, Dc
-            else:
-                cl, cr = c, c_next
-                Dl, Dr = Dc, D_next
+for i in range(3):
+    ax[i, 0].set_ylabel(r'$z/h$')
+    ax[i, 1].set_ylabel(r'$\Omega_0 / \omega_0$')
+    ax[i, 2].set_ylabel(r'$R$')
+    ax[i, 2].set_ylim(1e-13, 1)
 
-            root_c, is_root = _refine_and_classify_root(k, cl, cr, Dl, Dr, dz, Um, Uzzm, U_last, Uz0, Yps)
-            if is_root:
-                return root_c
-            else:
-                c = c_next
-                Dc = D_next
-                step = -STEP
-                continue
+ax[2, 0].set_xlabel(r'$U(z) / \sqrt{gh}$')
+ax[2, 1].set_xlabel(r'$kh$'), ax[2, 2].set_xlabel(r'$kh$')
 
-        c = c_next
-        Dc = D_next
-        step *= INCREASE_RATE
+plt.tight_layout()
+plt.show()
 
-        if c == c_min:
-            break
 
-    return best_c
-
-@njit(parallel=True)
-def _all_roots(k_vec, dz, Um, Uzzm, U_last, Uz0, Yps, bracket):
-    out = np.empty_like(k_vec, np.float64)
-    for i in prange(k_vec.size):
-        out[i] = _c_approx(k_vec[i], dz, Um, Uzzm, U_last, Uz0, Yps, bracket[i])
-    return out - U_last
-
-def Get_dispersion(U_vec, z_vec, k_vec, Yps=0.0, bracket=None):
-    z = np.asarray(z_vec, np.float64)
-    U = np.asarray(U_vec, np.float64)
-    k = np.asarray(k_vec, np.float64)
-
-    if z[0] > z[-1]:
-        z, U = z[::-1], U[::-1]
-
-    cs = CubicSpline(z, U, bc_type="natural", extrapolate=True)
-    Uz = cs(z, 1)
-    Uz0 = float(cs(0.0, 1))
-
-    if bracket is None:
-        delta = np.array([np.trapezoid(Uz * np.sinh(2.0 * ki * (z + 1.0)) / np.sinh(2.0 * ki), z)for ki in k])
-        c0 = np.sqrt((9.81 / k + Yps * k) * np.tanh(k))
-
-        U0 = U[-1]
-        c_KC = U0 + c0 - delta
-        c_EL = U0 + np.sqrt(c0 * c0 + delta * delta) - delta
-
-        bracket = np.array([[1.0 * c_KC[i], 1.2 * c_EL[i]] for i in range(len(k))])
-    else:
-        bracket = np.array([bracket for _ in range(len(k))])
-
-    dz = np.diff(z)
-    Um = 0.5 * (U[:-1] + U[1:])
-    Uzz = cs(z, 2)
-    Uzzm = 0.5 * (Uzz[:-1] + Uzz[1:])
-    return _all_roots(k, dz, Um, Uzzm, U[-1], Uz0, float(Yps), bracket)
