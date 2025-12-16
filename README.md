@@ -25,11 +25,11 @@ In `Example_plot.py` is the code to reproduce `Figure 3.` in the manuscript. The
 In the file `Dispersion.py`, we have implemented the first and third order Magnus approximation for the path-ordered exponential. Below, we explain how they are implemented, along with some practical tips.
 
 #### Dispersion function
-The function `Get_dispersion` in `Dispersion.py` takes the shear current $U$, nondimensionalized by $\sqrt{gh}$, the vertical grid $z/h$, and wavenumber(s) $kh$. It is assumed that $h=1$. 
+The function `Get_dispersion` in `Dispersion.py` takes the shear current $U$, the vertical grid $z/h$, and wavenumber(s) $kh$. It is assumed that $h=1$. 
 
 To compare it to DIM, it solves the dispersion relation (assuming $\vec{U} \parallel \vec{k}$)
 
-$$\tilde{c}^2 = \big(1 + \Upsilon k^2/g  - \tilde{c}|\partial_z U(0)| \big) f(0),$$
+$$\tilde{c}^2 = \big(g + \Upsilon k^2  - \tilde{c}|\partial_z U(0)| \big) f(0),$$
 
 where $\tilde{c}=\Omega_0/k$ is the intrinsic phase velocity and
 
@@ -56,18 +56,82 @@ $$\vec{\chi} _{i+1} = \begin{bmatrix}
 
  $$ f_{i+1} = \frac{f_i + s^{-1}_i \tanh (s_i\Delta)}{1 + s_i f_i \tanh (s_i \Delta)}= s^{-1}_i \tanh\big(s_i \Delta + \tanh^{-1}(s_i f_i) \big), \quad f_0=0.$$
 
+#### Critical layers
+
+The dispersion function $D(k,c)$ is a real-valued function where the zeros represent freely propagating waves. However, there exist two types of singularities on the real axis; when evaluating $D(k, c)$ in the complex plane $`c\in \mathbb{C}`$, it is clear that it contains poles when $G_-'(0)=0$ and a branch cut when there is a critical layer, $z_c\in(-h,0)$ such that $|c-U(z_c)| = 0$. To handle the branch cut, we utilise the analytic continuation of the dispersion function and evaluate it slightly above the real axis. If, however, there exists a pole that diverges to $\pm \infty$ depending on whether it is approached from below or above, a small imaginary part can introduce a false zero crossing, as shown in the Figure 1. and 2. below.
+
+<table>
+  <tr>
+    <td colspan="2" align="center">
+      <b>Dispersion for </b>$U(z) = \sqrt{gh}$ $\exp( 8 z/h)$ <b>and</b> $kh = 9$
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img width="490" alt="Pole on real axis"
+           src="https://github.com/kjelle29/Linear-dispersion-with-shear-current/blob/main/Figs/Pole_on_real_axis.png" />
+      <br/>
+      <sub><b>Figure 1.</b> Pole on the real axis.</sub>
+    </td>
+    <td align="center">
+      <img width="490" alt="Pole small imaginary part"
+           src="https://github.com/kjelle29/Linear-dispersion-with-shear-current/blob/main/Figs/Pole_small_imaginary_part.png" />
+      <br/>
+      <sub><b>Figure 2.</b> Pole with a small imaginary part, $c \to c(1 + i / 1000)$.</sub>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td colspan="2" align="center">
+      <b>Dispersion for </b>$U(z) = \sqrt{gh}$ $\sin( 10 z/h)$ <b>and</b> $kh = 10$
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img width="490" alt="Pole on real axis"
+           src="https://github.com/kjelle29/Linear-dispersion-with-shear-current/blob/main/Figs/Branch_cut.png" />
+      <br/>
+      <sub><b>Figure 3.</b> Dispersion function with branch cut on the real axis.</sub>
+    </td>
+    <td align="center">
+      <img width="490" alt="Pole small imaginary part"
+           src="https://github.com/kjelle29/Linear-dispersion-with-shear-current/blob/main/Figs/Near_branch_cut.png" />
+      <br/>
+      <sub><b>Figure 4.</b> Dispersion slightly above the real axis, $c \to c(1 + 3i / 20)$.</sub>
+    </td>
+  </tr>
+</table>
+
+On the other hand, evaluating the dispersion function on the real axis near/ or along the branch cut yields nonsense values, as can be seen from Figure 3. above. Since $D(k, c)$ is analytic, we evaluate it above the branch cut and take the real part, since only the imaginary part experiences a jump across the real axis. This gives a smoother function for the root-finding algorithm. <b>But</b>, this is the opposite conclusion of the handling of the poles; a small imaginary part introduced false zeros. To avoid the branch cut, but not the poles, we include only an imaginary part to the phase velocity if there exists a critical layer for that phase velocity. We move gradually away from the real axis as we approach a critical layer, as illustrated in the figure below.
+
+<table align="center">
+  <tr>
+    <td colspan="1" align="center">
+      <b>Example positions of branch cut and poles </b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img width="490" alt="Pole on real axis"
+           src="https://github.com/kjelle29/Linear-dispersion-with-shear-current/blob/main/Figs/Contour_dispersion_function.png" />
+      <br/>
+      <sub><b>Figure 5.</b>The blue markings are the poles and branch cut, and the red line shows where/how the code evaluates the dispersion function $D(k, c)$ in the presence of the difference singularities.</sub>
+    </td>
+  </tr>
+</table>
+
+#### Practical tips
+
+In the file `Dispersion.py`, there are four constants one can tune: `GAMMA` controls imaginary-part smoothing near critical layers. Too-large values smear the root and can shift the physical branch, so keep it as small as you can get away with. `ITERATIONS` sets the bisection refinement depth—choose it so the final bracket width is below your required phase-speed resolution. `ROOT_F_TOL` is the acceptance threshold on $|D(k,c)|$ after refinement. `N_SCAN` controls how aggressively the initial bracket is searched for sign changes and the right-most root.
+
+A good workflow is to pick the smallest stable `GAMMA`, set `N_SCAN` just high enough to reliably catch the desired branch, then tune `ITERATIONS` and `ROOT_F_TOL` together so refinement effort matches the accuracy your $z$ grid can actually support.
+
  #### Magnus expansion
 
 In `Dispersion.py`, there is also a function `Get_dispersion_Magnus`, which calculates the Magnus expansion up to third order. It has the same inputs and assumptions as `Get_dispersion(**args)`. The order is set equal to 3, but can be changed manually within the function if desirable. 
  
 To implement it, we have used the class `MagnusSolver` from Qiskit, which is documented here: https://qiskit-community.github.io/qiskit-dynamics/stubs/qiskit_dynamics.solvers.MagnusSolver.html
-
-#### Practical tips
-
-The interval for the bisection method is found by scanning the phase speed `c` starting at `U_last + 1e-3` with an initial step size `STEP`. On each iteration, the code checks for a sign change in `D(c)` between `c` and `c + step`; if there is no sign change, it advances `c` to `c + step` and multiplies `step` by `INCREASE_RATE` so the scan speeds up. If a sign change is detected, `[c, c + step]` is treated as a bracket containing a root and passed to `_refine_and_classify_root`.
-
-`_refine_and_classify_root` refines a candidate bracket using bisection for at most `ITERATIONS` steps. It stops early if the bracket width `cr - cl` falls below `C_TOL` or if the best function value is smaller than `D_TOL`. After refinement, the root is only accepted if `abs(D)` is below `ROOT_F_TOL`, so smaller `ROOT_F_TOL` means stricter acceptance.
-
 
 ### Citing
 TBD
