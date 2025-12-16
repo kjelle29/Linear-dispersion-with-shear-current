@@ -1,158 +1,141 @@
 import numpy as np
 from numba import njit, prange
-from scipy.interpolate import CubicSpline
 
-GAMMA = 1e-20
-STEP = 1e-4
-INCREASE_RATE = 1.05
-
+GAMMA = 0.
 ITERATIONS = 50
-C_TOL = 1e-20
-D_TOL = 1e-20
-ROOT_F_TOL = 1e-10
+ROOT_F_TOL = 1e-8
+N_SCAN = 50
 
-@njit(cache=True)
-def _f0_single(k, c, dz, Um, Uzzm):
-    n_z = dz.size
-    k2 = k * k
-    ce = c + GAMMA * 1j
-    f = 0.0 + 0.0j
-    for i in range(n_z):
+@njit(cache=True, inline="always")
+def _gamma(c, U):
+    if GAMMA == 0.0:
+        return 0.0
+    i = np.searchsorted(U, c)
+    dl = c - U[i - 1]
+    dr = U[i] - c
+    d2 = dl*dl if dl < dr else dr*dr
+    x = 1e2 * d2
+    return 0.0 if x > 25.0 else GAMMA * np.exp(-x)
+
+
+@njit(cache=True, inline="always", fastmath=True)
+def _f0_single(k2, ce, dz, Um, Uzzm):
+    f = 0.0j
+    for i in range(dz.size):
         s = np.sqrt(k2 + Uzzm[i] / (Um[i] - ce))
-        sdz = s * dz[i]
-        t = np.tanh(sdz)
+        t = np.tanh(s * dz[i])
         f = (f + t / s) / (1.0 + t * s * f)
     return f
 
-@njit(cache=True)
-def _f0(k, c, dz, Um, Uzzm):
-    n_c = c.size
-    out = np.zeros(n_c, np.complex128)
-    for j in range(n_c):
-        out[j] = _f0_single(k, c[j], dz, Um, Uzzm)
-    return out
+@njit(cache=True, inline="always")
+def _Disp_scalar(k2, gk2, c, dz, Um, Um_sorted, Uzzm, U_last, Uz0):
+    if GAMMA == 0.0:
+        gam = 0.0
+    else:
+        gam = _gamma(c, Um_sorted)
+    ce = c * (1.0 + gam * 1j)
+    f = _f0_single(k2, ce, dz, Um, Uzzm)
+    cm = ce - U_last
+    return (cm * cm - (gk2 - cm * Uz0) * f).real
 
-@njit(cache=True)
-def _Disp(k, c, dz, Um, Uzzm, U_last, Uz0, Yps):
-    n = c.size
-    D = np.empty(n, np.float64)
-    k2 = k * k
-    f = _f0(k, c, dz, Um, Uzzm)
-    for i in range(n):
-        cm = c[i] - U_last
-        D[i] = cm * cm - (1.0 + Yps/9.81 * k2 - cm * Uz0) * f[i].real
-    return D
+@njit(cache=True, inline="always")
+def _absf(x):
+    return -x if x < 0.0 else x
 
-@njit(cache=True)
-def _Disp_scalar(k, c, dz, Um, Uzzm, U_last, Uz0, Yps):
-    k2 = k * k
-    f = _f0_single(k, c, dz, Um, Uzzm)
-    cm = c - U_last
-    return cm * cm - (1.0 + Yps/9.81 * k2 - cm * Uz0) * f.real
-
-@njit(cache=True)
-def _refine_and_classify_root(k, cl0, cr0, Dl0, Dr0, dz, Um, Uzzm, U_last, Uz0, Yps):
-    cl = cl0
-    cr = cr0
-    Dl = Dl0
-    Dr = Dr0
-    best_c = cl
-    best_D_abs = abs(Dl)
-
-    if abs(Dr) < best_D_abs:
-        best_c = cr
-        best_D_abs = abs(Dr)
+@njit(cache=True, inline="always", fastmath=True)
+def _refine_root(k2, gk2, cl, cr, Dl, dz, Um, Um_sorted, Uzzm, U_last, Uz0):
+    cm = 0.5 * (cl + cr)
+    Dm = _Disp_scalar(k2, gk2, cm, dz, Um, Um_sorted, Uzzm, U_last, Uz0)
     for _ in range(ITERATIONS):
-        cm = 0.5 * (cl + cr)
-        Dm = _Disp_scalar(k, cm, dz, Um, Uzzm, U_last, Uz0, Yps)
-        Dm_abs = abs(Dm)
-        if Dm_abs < best_D_abs:
-            best_D_abs = Dm_abs
-            best_c = cm
         if Dl * Dm <= 0.0:
             cr = cm
-            Dr = Dm
         else:
             cl = cm
             Dl = Dm
-        if (cr - cl) < C_TOL or best_D_abs < D_TOL:
-            break
+        cm = 0.5 * (cl + cr)
+        Dm = _Disp_scalar(k2, gk2, cm, dz, Um, Um_sorted, Uzzm, U_last, Uz0)
+    return cm, _absf(Dm)
 
-    is_true_root = best_D_abs < ROOT_F_TOL
-    return best_c, is_true_root
+@njit(cache=True, inline="always", fastmath=True)
+def _largest_root(k, dz, Um, Um_sorted, Uzzm, U_last, Uz0, Yps, c_left, c_right):
+    k2 = k * k
+    gk2 = 9.81 + Yps * k2
+    step = (c_right - c_left) / N_SCAN
 
-@njit(cache=True)
-def _c_approx(k, dz, Um, Uzzm, U_last, Uz0, Yps):
-    c_start = U_last + 1e-3
-    c_max = U_last + 5.0
-    #c_start = -1e-2
-    #c_max = 1e-2
-    Dc = _Disp_scalar(k, c_start, dz, Um, Uzzm, U_last, Uz0, Yps)
+    c1 = c_right
+    D1 = _Disp_scalar(k2, gk2, c1, dz, Um, Um_sorted, Uzzm, U_last, Uz0)
 
-    best_c = c_start
-    best_D_abs = abs(Dc)
+    best_c = c1
+    best_D = _absf(D1)
 
-    step = STEP
-    c = c_start
-    while c < c_max:
-        if c + step > c_max:
-            step = c_max - c
-        if step <= 0.0:
-            break
+    for _ in range(N_SCAN):
+        c0 = c1 - step
+        D0 = _Disp_scalar(k2, gk2, c0, dz, Um, Um_sorted, Uzzm, U_last, Uz0)
 
-        c_next = c + step
-        D_next = _Disp_scalar(k, c_next, dz, Um, Uzzm, U_last, Uz0, Yps)
+        a0 = _absf(D0)
+        if a0 < best_D:
+            best_D = a0
+            best_c = c0
 
-        D_next_abs = abs(D_next)
-        if D_next_abs < best_D_abs:
-            best_D_abs = D_next_abs
-            best_c = c_next
+        if D0 * D1 <= 0.0:
+            rc, rd = _refine_root(k2, gk2, c0, c1, D0, dz, Um, Um_sorted, Uzzm, U_last, Uz0)
+            if rd < ROOT_F_TOL:
+                return rc
+            if rd < best_D:
+                best_D = rd
+                best_c = rc
 
-        if Dc * D_next <= 0.0:
-            root_c, is_root = _refine_and_classify_root(k, c, c_next, Dc, D_next, dz, Um, Uzzm, U_last, Uz0, Yps)
-            if is_root:
-                return root_c
-            else:
-                c = c_next
-                Dc = D_next
-                step = STEP / 10
-                continue
-
-        c = c_next
-        Dc = D_next
-        step *= INCREASE_RATE
+        c1 = c0
+        D1 = D0
 
     return best_c
 
-@njit(parallel=True)
-def _all_roots(k_vec, dz, Um, Uzzm, U_last, Uz0, Yps):
-    n = k_vec.size
-    out = np.empty(n, np.float64)
-    for i in prange(n):
-        out[i] = _c_approx(k_vec[i], dz, Um, Uzzm, U_last, Uz0, Yps)
-    return out
+@njit(parallel=True, cache=True)
+def _all_roots(k_vec, dz, Um, Um_sorted, Uzzm, U_last, Uz0, Yps, brackets):
+    out = np.empty_like(k_vec, np.float64)
+    for i in prange(k_vec.size):
+        out[i] = _largest_root(k_vec[i], dz, Um, Um_sorted, Uzzm, U_last, Uz0, Yps, brackets[i, 0], brackets[i, 1])
+    return out - U_last
 
-def Get_dispersion(U_vec, z_vec, k_vec, Yps=0.0):
-    z = np.asarray(z_vec, np.float64)
-    U = np.asarray(U_vec, np.float64)
-    if z[0] > z[-1]:
-        z, U = z[::-1], U[::-1]
+def Get_dispersion(U_vec, z_vec, k_vec, Yps=0.0, bracket=None):
+    if z_vec[0] > z_vec[-1]:
+        z_vec = z_vec[::-1].copy()
+        U_vec = U_vec[::-1].copy()
 
-    cs = CubicSpline(z, U, bc_type="natural", extrapolate=True)
-    Uz0 = float(cs(0.0, 1))
+    z = np.ascontiguousarray(z_vec)
+    U = np.ascontiguousarray(U_vec)
+    k = np.ascontiguousarray(k_vec)
 
-    dz = np.diff(z)
-    Um = 0.5 * (U[:-1] + U[1:])
-    Uzz = cs(z, 2)
-    Uzzm = 0.5 * (Uzz[:-1] + Uzz[1:])
-    k_vec = np.asarray(k_vec, np.float64)
-    return _all_roots(k_vec, dz, Um, Uzzm, U[-1], Uz0, float(Yps))
+    Uz = np.ascontiguousarray(np.gradient(U, z, edge_order=2))
+    Uzz = np.ascontiguousarray(np.gradient(Uz, z, edge_order=2))
+    Uz0 = float(Uz[-1])
+
+    dz = np.ascontiguousarray(np.diff(z))
+    Um = np.ascontiguousarray(0.5 * (U[:-1] + U[1:]))
+    Uzzm = np.ascontiguousarray(0.5 * (Uzz[:-1] + Uzz[1:]))
+    Um_sorted = np.ascontiguousarray(np.sort(Um.copy()))
+    U_last = float(U[-1])
+
+    if bracket is None:
+        delta = np.array([np.trapezoid(Uz * np.sinh(2.0 * ki * (z + 1.0)) / np.sinh(2.0 * ki), z) for ki in k])
+        c0 = np.sqrt((9.81 / k + Yps * k) * np.tanh(k))
+        c_KC = U_last + c0 - delta
+        c_EL = U_last + np.sqrt(c0 * c0 + delta * delta) - delta
+        brackets = np.empty((k.size, 2), np.float64)
+        brackets[:, 0] = 1.0 * c_KC
+        brackets[:, 1] = 2.0 * c_EL
+    else:
+        bracket = np.asarray(bracket, np.float64)
+        if bracket.shape == (2,):
+            brackets = np.empty((k.size, 2), np.float64)
+            brackets[:, 0] = bracket[0]
+            brackets[:, 1] = bracket[1]
+        else:
+            brackets = bracket
+
+    return _all_roots(k, dz, Um, Um_sorted, Uzzm, U_last, Uz0, float(Yps), np.ascontiguousarray(brackets))
 
 def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
-
-    ####################################################################################################################
-    ### Define variables
-    ####################################################################################################################
     z = np.asarray(z_vec, float)
     U = np.asarray(U_vec, float)
     if z[0] > z[-1]:
@@ -175,9 +158,6 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
     dz = np.diff(zf)
     Um = 0.5 * (Uf[:-1] + Uf[1:])
     Uzzm = 0.5 * (Uzzf[:-1] + Uzzf[1:])
-    ####################################################################################################################
-    ###
-    ####################################################################################################################
 
     def Dispersion(k, c, gamma=1e-10, cheb_order=6, magnus_order=3):
         try:
@@ -281,4 +261,5 @@ def Get_dispersion_Magnus(U_vec, z_vec, k_vec, Yps = 0, interpolate = False):
         return np.mean(cs)
 
     return np.array([c_approximation(ki) for ki in k_vec])
+
 
