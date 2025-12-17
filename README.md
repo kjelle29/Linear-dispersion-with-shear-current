@@ -58,7 +58,7 @@ $$\vec{\chi} _{i+1} = \begin{bmatrix}
 
 #### Critical layers
 
-The dispersion function $D(k,c)$ is a real-valued function where the zeros represent freely propagating waves. However, there exist two types of singularities on the real axis; when evaluating $D(k, c)$ in the complex plane $`c\in \mathbb{C}`$, it is clear that it contains poles when $G_-'(0)=0$ and a branch cut when there is a critical layer, $z_c\in(-h,0)$ such that $|c-U(z_c)| = 0$. To handle the branch cut, we utilise the analytic continuation of the dispersion function and evaluate it slightly above the real axis. If, however, there exists a pole that diverges to $\pm \infty$ depending on whether it is approached from below or above, a small imaginary part can introduce a false zero crossing, as shown in the Figure 1. and 2. below.
+The dispersion function $D(k,c)$ is a real-valued function where the zeros represent freely propagating waves. However, there exist two types of singularities on the real axis; when evaluating $D(k, c)$ in the complex plane $`c\in \mathbb{C}`$, it is clear that it contains poles when $\partial_z G_-(0)=0$ and a branch cut when there is a critical layer, $z_c\in(-h,0)$ such that $|c-U(z_c)| = 0$. To handle the branch cut, we utilise the analytic continuation of the dispersion function and evaluate it slightly above the real axis. If, however, there exists a pole that diverges to $\pm \infty$ depending on whether it is approached from below or above, a small imaginary part can introduce a false zero crossing, as shown in the Figure 1. and 2. below.
 
 <table>
   <tr>
@@ -103,7 +103,7 @@ The dispersion function $D(k,c)$ is a real-valued function where the zeros repre
   </tr>
 </table>
 
-On the other hand, evaluating the dispersion function on the real axis near/ or along the branch cut yields nonsense values, as can be seen from Figure 3. above. Since $D(k, c)$ is analytic, we evaluate it above the branch cut and take the real part, since only the imaginary part experiences a jump across the real axis. This gives a smoother function for the root-finding algorithm. <b>But</b>, this is the opposite conclusion of the handling of the poles; a small imaginary part introduced false zeros. To avoid the branch cut, but not the poles, we include only an imaginary part to the phase velocity if there exists a critical layer for that phase velocity. We move gradually away from the real axis as we approach a critical layer, as illustrated in the figure below.
+On the other hand, evaluating the dispersion function on the real axis near/ or along the branch cut yields nonsense values, as can be seen from Figure 3. above. Since $D(k, c)$ is analytic, we evaluate it above the branch cut and take the real part. This gives a smoother function for the root-finding algorithm. <b>But</b>, this is the opposite conclusion of the handling of the poles; a small imaginary part introduced false zeros. To avoid the branch cut, but not the poles, we include only an imaginary part to the phase velocity if there exists a critical layer for that phase velocity. We move gradually away from the real axis as we approach a critical layer, as illustrated in the figure below.
 
 <table align="center">
   <tr>
