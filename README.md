@@ -54,7 +54,7 @@ $$\vec{\chi} _{i+1} = \begin{bmatrix}
 
  We insert this into the equation for $f(z)$, and simplify it. The equation that solves the Rayleigh/Ricatti equation numerically is
 
- $$ f_{i+1} = \frac{f_i + s^{-1}_i \tanh (s_i\Delta)}{1 + s_i f_i \tanh (s_i \Delta)}= s^{-1}_i \tanh\big(s_i \Delta + \tanh^{-1}(s_i f_i) \big), \quad f_0=0.$$
+ $$ f_{i+1} = \frac{f_i + s^{-1}_i \tanh (s_i\Delta)}{1 + s_i f_i \tanh (s_i \Delta)}, \quad f_0=0.$$
 
 #### Critical layers
 
