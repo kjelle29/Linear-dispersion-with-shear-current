@@ -33,7 +33,7 @@ $$\tilde{c}^2 = \big(g + \Upsilon k^2  - \tilde{c}|\partial_z U(0)| \big) f(0),$
 
 where $\tilde{c}=\Omega_0/k$ is the intrinsic phase velocity and
 
-$$\frac{d}{dz} f(z) = 1 - k^2\big[1 + q(z)\big] f(z),\qquad f(-h) =0.$$
+$$\frac{d}{dz} f(z) = 1 - k^2\big[1 + q(z)\big] f(z)^2,\qquad f(-h) =0.$$
 
 The equation above is the Rayleigh equation cast in a Riccati equation for $f(z) = G_-(z) / \partial_z G_-(z)$. Defining $s^2 = k^2(1+q)$, the derivative can be expressed as
 
