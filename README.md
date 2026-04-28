@@ -10,13 +10,13 @@ $$\Omega_0^2 = \big[(g+\Upsilon k^2) k^2 - \Omega_0 |\partial_z U(0)| \cos \gamm
 
 for an arbitrary shear current $U(z)$. The Green's function and its derivative are given by
 
-$$G_-(z) = \cosh k(z+h) Z_1(z) + \frac{\sinh k (z+h)}{k} Z_2(z), $$
+$$G_-(z) = \frac{\cosh k(z+h)}{\cosh kh} Z_1(z) + \frac{\sinh k (z+h)}{\cosh kh} Z_2(z), $$
 
-$$\partial_z G_-(z) = k \sinh k(z+h) Z_1(z) + \cosh k(z+h) Z_2(z), $$
+$$\partial_z G_-(z) = k \frac{\sinh k(z+h)}{\cosh kh} Z_1(z) + k \frac{\cosh k(z+h)}{\cosh kh} Z_2(z), $$
 
 where $Z_1(z)$ and $Z_2(z)$ are the vector elements of
 
-$$\vec{Z}(z) = \mathcal{P} \exp \bigg( \int_{-h}^z q(\zeta) C(\zeta+h) d\zeta \bigg) \begin{pmatrix} 0\\\ 1\end{pmatrix}, \quad C(x) = \frac{1}{2}\begin{bmatrix} - k \sinh 2kx & 1 - \cosh 2kx \\\ k^2 (1 + \cosh 2kx) & k \sinh 2kx \end{bmatrix} . $$
+$$\vec{Z}(z) = \mathcal{P} \exp \bigg( k \int_{-h}^z q(\zeta) C(\zeta+h) d\zeta \bigg) \begin{pmatrix} 0\\\ 1\end{pmatrix}, \quad C(x) = \frac{1}{2}\begin{bmatrix} - \sinh 2kx & 1 - \cosh 2kx \\\ 1 + \cosh 2kx & \sinh 2kx \end{bmatrix} . $$
 
 ### Example code
 
@@ -34,27 +34,6 @@ $$\tilde{c}^2 = \big(g + \Upsilon k^2  - \tilde{c}|\partial_z U(0)| \big) f(0),$
 where $\tilde{c}=\Omega_0/k$ is the intrinsic phase velocity and
 
 $$\frac{d}{dz} f(z) = 1 - k^2\big[1 + q(z)\big] f(z)^2,\qquad f(-h) =0.$$
-
-The equation above is the Rayleigh equation cast in a Riccati equation for $f(z) = G_-(z) / \partial_z G_-(z)$. Defining $s^2 = k^2(1+q)$, the derivative can be expressed as
-
-$$\frac{d}{dz} f(z) = 1 - s^2 f(z)^2.$$
-
-Without the interaction picture, we can write the evolution of the state ${\vec{\chi} (z) = (G_-(z), {\ } \partial_z G_-(z))^T}$ as 
-
-$$\partial_z \vec{\chi}(z) = \begin{bmatrix}
-        0 & 1\\\ s^2 & 0
-    \end{bmatrix} \vec{\chi} (z) .$$
-
-Next, we discretize the depth $\Delta = z_{i+i} - z_{i}$ and $s(z_i) = s_i$. Taking the first order Magnus term, so the ordinary exponential, we can write
-
-$$\vec{\chi} _{i+1} = \begin{bmatrix}
-        \cosh (s_i\Delta) & \frac{\sinh (s_i\Delta)}{s_i}\\
-        s_i \sinh (s_i\Delta) & \cosh (s_i\Delta)
-    \end{bmatrix} \vec{\chi} _i .$$
-
- We insert this into the equation for $f(z)$, and simplify it. The equation that solves the Rayleigh/Ricatti equation numerically is
-
- $$ f_{i+1} = \frac{f_i + s^{-1}_i \tanh (s_i\Delta)}{1 + s_i f_i \tanh (s_i \Delta)}, \quad f_0=0.$$
 
 #### Critical layers
 
@@ -134,5 +113,11 @@ In `Dispersion.py`, there is also a function `Get_dispersion_Magnus`, which calc
 To implement it, we have used the class `MagnusSolver` from Qiskit, which is documented here: https://qiskit-community.github.io/qiskit-dynamics/stubs/qiskit_dynamics.solvers.MagnusSolver.html
 
 ### Citing
-TBD
-
+        @misc{heinrich2026dispersion,
+        title={Exact dispersion relation for linear surface waves on arbitrary vertical shear}, 
+        author={Kjell S. Heinrich and Simen Å. Ellingsen},
+        year={2026},
+        eprint={2604.24484},
+        archivePrefix={arXiv},
+        url={https://arxiv.org/abs/2604.24484}, 
+        }
