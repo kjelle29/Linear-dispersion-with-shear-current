@@ -20,9 +20,9 @@ $$\vec{Z}(z) = \mathcal{P} \exp \bigg( k \int_{-h}^z q(\zeta) C(\zeta+h) d\zeta 
 
 ### Example code
 
-In `Example_plot.py` is the code to reproduce `Figure 3.` in the manuscript. The dispersion relations for DIM and K&C1 are saved in the `/DIM` folder as intrinsic phase velocities $\tilde{c} = c - U(0)$. These are only a factor $k$ away from the frequency. These are obtained with the discretization and iterations explained in the manuscript. 
+In `Example_plot.py` is the code to reproduce `Figure 2.` in the manuscript. The dispersion relations for DIM are saved in the `/DIM` folder as intrinsic phase velocities $\tilde{c} = c - U(0)$. These are only a factor $k$ away from the frequency. These are obtained with the discretisation and iterations explained in the manuscript. 
 
-In the file `Dispersion.py`, we have implemented the first and third order Magnus approximation for the path-ordered exponential. Below, we explain how they are implemented, along with some practical tips.
+In the file `Dispersion.py`, we have implemented the product approximation for the path-ordered exponential. Below, we explain how they are implemented, along with some practical tips.
 
 #### Dispersion function
 The function `Get_dispersion` in `Dispersion.py` takes the shear current $U$, the vertical grid $z/h$, and wavenumber(s) $kh$. It is assumed that $h=1$. 
@@ -105,12 +105,6 @@ On the other hand, evaluating the dispersion function on the real axis near/ or 
 In the file `Dispersion.py`, there are four constants one can tune: `GAMMA` controls imaginary-part smoothing near critical layers. Too-large values smear the root and can shift the physical branch, so keep it as small as you can get away with. `ITERATIONS` sets the bisection refinement depth—choose it so the final bracket width is below your required phase-speed resolution. `ROOT_F_TOL` is the acceptance threshold on $|D(k,c)|$ after refinement. `N_SCAN` controls how aggressively the initial bracket is searched for sign changes and the right-most root.
 
 A good workflow is to pick the smallest stable `GAMMA`, set `N_SCAN` just high enough to reliably catch the desired branch, then tune `ITERATIONS` and `ROOT_F_TOL` together so refinement effort matches the accuracy your $z$ grid can actually support.
-
- #### Magnus expansion
-
-In `Dispersion.py`, there is also a function `Get_dispersion_Magnus`, which calculates the Magnus expansion up to third order. It has the same inputs and assumptions as `Get_dispersion(**args)`. The order is set equal to 3, but can be changed manually within the function if desirable. 
- 
-To implement it, we have used the class `MagnusSolver` from Qiskit, which is documented here: https://qiskit-community.github.io/qiskit-dynamics/stubs/qiskit_dynamics.solvers.MagnusSolver.html
 
 ### Citing
         @misc{heinrich2026dispersion,
