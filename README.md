@@ -1,4 +1,4 @@
-## A closed linear dispersion relation for surface waves on a shear current 
+## Exact dispersion relation for linear surface waves on arbitrary vertical shear
 
 <p align="center">
         <img width="520" height="290" alt="image" src="https://github.com/user-attachments/assets/ce495baa-f0ba-4473-ab1f-42136ed3b992" />
